@@ -3,9 +3,11 @@ import java.io.*;
 
 public class DictionaryLookUp {
 
-	static PrintWriter out = new PrintWriter(System.out);
+	static FileWriter fw;
+	static PrintWriter out;
 	static int[] firstcand;
 	static ArrayList<String> candidateList[];
+	static int counter = -1;
 	
 	//Removes unnecessary punctuation
 	public static String modifyPuzzle(String str)
@@ -93,7 +95,7 @@ public class DictionaryLookUp {
 			char c = 'A';
 			out.print((char)(c+i)+" -->  ");
 			for(char z:map[i])
-				out.print(z+" ");
+				System.out.print(z+" ");
 			out.println();
 		}
 	}
@@ -112,7 +114,7 @@ public class DictionaryLookUp {
 			HashSet<Character>[] newMap = new HashSet[26];
 			for(int i=0;i<26;i++)
 				newMap[i] = new HashSet<>();
-			out.println(cipherWord+" "+hMap.get(canonical).size());
+			//out.println(cipherWord+" "+hMap.get(canonical).size());
 			ArrayList<String> candidateWords = candidateList[str.length-t-1];
 			boolean[] cipherLetter = new boolean[26];
 			for(int i=firstcand[str.length-t-1];candidateWords!=null && i<candidateWords.size();i++)
@@ -121,7 +123,7 @@ public class DictionaryLookUp {
 				//condition that checks mapping is consistent with ancestor nodes
 				if(isConsistent(map, cipherWord, sb))
 				{
-					out.println(sb);
+					//out.println(sb);
 					for(int j=0;j<sb.length();j++)
 					{
 						cipherLetter[cipherWord.charAt(j)-'A']=true;
@@ -149,8 +151,10 @@ public class DictionaryLookUp {
 	public static boolean allCipherTextKnown(HashSet<Character>[] map)
 	{
 		for(int i=0;i<26;++i)
-			if(map[i].size()!=1)
+		{
+			if(map[i].size()!=1 && map[i].size()!=0)
 				return false;
+		}
 		return true;
 	}
 	
@@ -161,7 +165,10 @@ public class DictionaryLookUp {
 		{
 			char c = str.charAt(i);
 			if(c>='A' && c<='Z')
-				out.print(map[c-'A']);
+			{
+				for(char z:map[c-'A'])
+					out.print(z);
+			}
 			else
 				out.print(c);
 		}
@@ -169,24 +176,62 @@ public class DictionaryLookUp {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static void solveRecursive(String input, HashSet<Character>[] map, String[] str,HashMap<String,ArrayList<String>> hMap)
+	public static void solveRecursive(String input, HashSet<Character>[] map, String[] str,HashMap<String,ArrayList<String>> hMap,int selectedWord)
 	{
-		
+		//Printing Full Solution
+		if(allCipherTextKnown(map))
+		{
+			printSolution(input, map);
+			return;
+		}
+		//printMappings(map);
 		//Self-Intersection Algorithm
 		HashSet<Character>[] tmp = new HashSet[26];
 		do {
-		for(int i=0;i<26;i++)
-			tmp[i] = (HashSet<Character>)map[i].clone();
+			for(int i=0;i<26;i++)
+				tmp[i] = (HashSet<Character>)map[i].clone();
 			selfIntersection(map, str, hMap);
 		}while(!isSame(tmp,map));
 		
+		//Adding Mapping for current Node
+		//int selectedWord = planner(map);
+		ArrayList<String> candidateWords = candidateList[selectedWord];
+		for(int i=firstcand[selectedWord];candidateWords!=null && i<candidateWords.size();i++)
+		{
+			String plainWord = candidateWords.get(i).toLowerCase();
+			String cipherWord = str[selectedWord];
+			boolean[] checker = new boolean[26];
+			for(int j=0;j<cipherWord.length();j++)
+			{
+				if(!checker[cipherWord.charAt(j)-'A'])
+				{
+					checker[cipherWord.charAt(j)-'A']=true;
+					HashSet<Character> hSet = new HashSet<>();
+					hSet.add(plainWord.charAt(j));
+					tmp[cipherWord.charAt(j)-'A'] = hSet;
+				}
+			}
+			int firstcandI = firstcand[selectedWord];
+			System.out.println(cipherWord+" "+plainWord);
+			solveRecursive(input, tmp, str, hMap,selectedWord+1);
+			firstcand[selectedWord] = firstcandI;
+		}	
+	}
+	
+	public static int planner(HashSet<Character>[] map)
+	{
+		return ++counter;
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static void main(String[] args) throws FileNotFoundException {
+	public static void main(String[] args) throws IOException {
+		
 		// TODO Auto-generated method stub
+		
 		long start = System.currentTimeMillis();
 		File iFile = new File("/home/blackpearl/Desktop/Internship/Words/words.txt");
+		fw = new FileWriter("/home/blackpearl/git/Substitution_Cipher_Solver/Regular Expression/src/Output.out");
+		out = new PrintWriter(fw);
 		Scanner sc = new Scanner(new FileReader(iFile));
 		HashMap<String,ArrayList<String>> hMap = new HashMap<>();
 		while(sc.hasNextLine())
@@ -249,7 +294,7 @@ public class DictionaryLookUp {
 		for(int i=0;i<26;i++)
 		{
 			char c = 'a';
-			if(map[i].size()==0)
+			if(map[i].size()==0 && input.contains((char)('A'+i)+""))
 			{
 				for(int j=0;j<26;j++)
 				{
@@ -261,7 +306,7 @@ public class DictionaryLookUp {
 		firstcand = new int[str.length];
 		Arrays.fill(firstcand, 0);
 		
-		solveRecursive(input, map, str, hMap);
+		solveRecursive(input, map, str, hMap,0);
 		
 		//Self-Interaction algorithm loop
 //		HashSet<Character>[] tmp = new HashSet[26];
@@ -271,15 +316,17 @@ public class DictionaryLookUp {
 //			selfIntersection(map, str, hMap);
 //		}while(!isSame(tmp,map));
 
-		//printMappings(map);
-		//out.println(Arrays.toString(firstcand));
+//		printMappings(map);
+//		out.print(allCipherTextKnown(map));
+//		printSolution(input, map);
+//		out.println(Arrays.toString(firstcand));
 //		printMappings(tmp);
 		
 		//To print plain text
 		/*for(int i=0;i<str.length;i++)
 		{
 			for(int j=0;j<str[i].length();j++)
-			{
+			{CSOVATTJVGSTH
 				int tmp = str[i].charAt(j)-'A';
 				Object[] tmpChar = map[tmp].toArray();
 				if(tmpChar.length==1)
