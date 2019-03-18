@@ -23,7 +23,7 @@ public class DictionaryLookUp {
 			else if(c>='A' && c<='Z')
 				sb.append(c);
 		}
-		out.println(sb.toString());
+		//out.println(sb.toString());
 		String[] s = sb.toString().split(" ");
 		sb = new StringBuffer();
 		HashSet<String> hSet = new HashSet<>();
@@ -38,6 +38,7 @@ public class DictionaryLookUp {
 			}
 		}
 		sb.deleteCharAt(sb.length()-1);
+		//out.println(str);
 		return sb.toString();
 	}
 	
@@ -93,10 +94,10 @@ public class DictionaryLookUp {
 		for(int i=0;i<26;i++)
 		{
 			char c = 'A';
-			out.print((char)(c+i)+" -->  ");
+			System.out.print((char)(c+i)+" -->  ");
 			for(char z:map[i])
 				System.out.print(z+" ");
-			out.println();
+			System.out.println();
 		}
 	}
 	
@@ -110,20 +111,20 @@ public class DictionaryLookUp {
 		while(t--!=0)
 		{
 			String cipherWord = str[str.length-t-1];
-			String canonical = convertToCanonicalForm(cipherWord);
 			HashSet<Character>[] newMap = new HashSet[26];
 			for(int i=0;i<26;i++)
 				newMap[i] = new HashSet<>();
-			//out.println(cipherWord+" "+hMap.get(canonical).size());
+			
 			ArrayList<String> candidateWords = candidateList[str.length-t-1];
 			boolean[] cipherLetter = new boolean[26];
+
 			for(int i=firstcand[str.length-t-1];candidateWords!=null && i<candidateWords.size();i++)
 			{
 				String sb = new String(candidateWords.get(i)).toLowerCase();
 				//condition that checks mapping is consistent with ancestor nodes
 				if(isConsistent(map, cipherWord, sb))
 				{
-					//out.println(sb);
+					//System.out.println(sb);
 					for(int j=0;j<sb.length();j++)
 					{
 						cipherLetter[cipherWord.charAt(j)-'A']=true;
@@ -184,7 +185,8 @@ public class DictionaryLookUp {
 			printSolution(input, map);
 			return;
 		}
-		//printMappings(map);
+		ArrayList<String> candidateWords = new ArrayList<>();
+		
 		//Self-Intersection Algorithm
 		HashSet<Character>[] tmp = new HashSet[26];
 		do {
@@ -193,29 +195,45 @@ public class DictionaryLookUp {
 			selfIntersection(map, str, hMap);
 		}while(!isSame(tmp,map));
 		
+		int[] firstcandtmp = new int[firstcand.length];
+		for(int j=0;j<firstcand.length;j++)
+			firstcandtmp[j] = firstcand[j];
+		
 		//Adding Mapping for current Node
 		//int selectedWord = planner(map);
-		ArrayList<String> candidateWords = candidateList[selectedWord];
-		for(int i=firstcand[selectedWord];candidateWords!=null && i<candidateWords.size();i++)
+		for(int i=firstcand[selectedWord];i<candidateList[selectedWord].size();i++)
+			candidateWords.add(candidateList[selectedWord].get(i));
+		boolean hasChild = false;
+		for(int i=0;candidateWords!=null && i<candidateWords.size();i++)
 		{
 			String plainWord = candidateWords.get(i).toLowerCase();
 			String cipherWord = str[selectedWord];
-			boolean[] checker = new boolean[26];
-			for(int j=0;j<cipherWord.length();j++)
+			if(isConsistent(map, cipherWord, plainWord))
 			{
-				if(!checker[cipherWord.charAt(j)-'A'])
+				for(int k=0;k<26;k++)
+					tmp[k] = (HashSet<Character>)map[k].clone();
+				boolean[] checker = new boolean[26];
+				for(int j=0;j<cipherWord.length();j++)
 				{
-					checker[cipherWord.charAt(j)-'A']=true;
-					HashSet<Character> hSet = new HashSet<>();
-					hSet.add(plainWord.charAt(j));
-					tmp[cipherWord.charAt(j)-'A'] = hSet;
+					if(!checker[cipherWord.charAt(j)-'A'])
+					{
+						checker[cipherWord.charAt(j)-'A']=true;
+						HashSet<Character> hSet = new HashSet<>();
+						hSet.add(plainWord.charAt(j));
+						tmp[cipherWord.charAt(j)-'A'] = hSet;
+					}
 				}
+				solveRecursive(input, tmp, str, hMap,selectedWord+1);
+				hasChild = true;
 			}
-			int firstcandI = firstcand[selectedWord];
-			System.out.println(cipherWord+" "+plainWord);
-			solveRecursive(input, tmp, str, hMap,selectedWord+1);
-			firstcand[selectedWord] = firstcandI;
-		}	
+
+			//Popping firstcand off from stack
+			for(int j=0;j<firstcand.length;j++)
+				firstcand[j] = firstcandtmp[j];
+		}
+		//Reporting Partial Solutions
+		if(!hasChild)
+			System.out.println(firstcand[selectedWord]+" "+candidateList[selectedWord].size()+"Partial Solution");
 	}
 	
 	public static int planner(HashSet<Character>[] map)
@@ -229,7 +247,7 @@ public class DictionaryLookUp {
 		// TODO Auto-generated method stub
 		
 		long start = System.currentTimeMillis();
-		File iFile = new File("/home/blackpearl/Desktop/Internship/Words/words.txt");
+		File iFile = new File("/home/blackpearl/Desktop/Internship/Words/usa.txt");
 		fw = new FileWriter("/home/blackpearl/git/Substitution_Cipher_Solver/Regular Expression/src/Output.out");
 		out = new PrintWriter(fw);
 		Scanner sc = new Scanner(new FileReader(iFile));
@@ -263,8 +281,10 @@ public class DictionaryLookUp {
 		candidateList = new ArrayList[str.length];
 		
 		for(int i=0;i<str.length;++i)
+		{
+			//System.out.println(str[i]);
 			candidateList[i] = (ArrayList<String>) hMap.get(convertToCanonicalForm(str[i])).clone();
-		
+		}
 //		Searching Time Complexity(Experimental)
 //		start = System.currentTimeMillis();
 //		String[] cipherText = "CSOVATTJVGSTH ZBAL VPUTHJ CAJO TAG BJVUYGBJ GPJ YUOG SG XAOJO GPJ ZEGEBJ".split(" ");
@@ -308,6 +328,10 @@ public class DictionaryLookUp {
 		
 		solveRecursive(input, map, str, hMap,0);
 		
+		for(int i=0;i<str.length;++i)
+			System.out.println(str[i]+" "+(candidateList[i].size()-firstcand[i]));
+		
+		//printMappings(map);
 		//Self-Interaction algorithm loop
 //		HashSet<Character>[] tmp = new HashSet[26];
 //		do {
@@ -342,8 +366,39 @@ public class DictionaryLookUp {
 
 /* Worst Input:- WKH TXLFN EURZQ IRA MXPSV RYHU WKH ODCB GRJ 
  * Output:- The quick brown fox jumped over the lazy dog*/
-/*Original Input Puzzle:- CSOVATTJVGSTH ZBAL VPUTHJ CAJO TAG BJVUYGEBJ GPJ YUOG SG XAOJO GPJ ZEGEBJ
+/*Original Input Puzzle:- CSOVATTJVGSTH ZBAL VPUTHJ CAJO TAG BJVUYGEBJ GPJ YUOG. SG XAOJO GPJ ZEGEBJ.
  * Output:- Disconnecting from change does not recapture the past it loses the future*/
-/* Input:- LT CDDCAYVGLYQ XCOUG'Y ZGCSZ PVLFX W XCCA 
- * Output:- If opportunity does't knock build a door*/
-/* KT KRAY GZWZCI VJ IJVHAVJRBA HRNZ KZ DGBWCZKI HRNZ KZ PBGO HRNZ KZ JEZ KBIJ VWIJGMIZ XGTDJBHGVK BG JEZ KBIJ RAJGRXVJZ VAVCTIRI VAY R VK RA KT BPA DGBDZG VJKBIDEZGZ*/
+/* Input:- LT CDDCAYVGLYQ XCOUG'Y ZGCSZ, PVLFX W XCCA 
+ * Output:- If opportunity doesn't knock, build a door*/
+/*  
+ * VJEVMJ OJJU NE AJ LJXQOUJU XELJ EPNJO NSFO NSJR OJJU NE AJ QOGNLHZNJU.
+ * people need to be reminded more often than they need to be instructed.
+ * 
+ * UBTY LZM VZ DY XZQ J KZG DYRTQADTU, D RBDYN J VZZS RBDYV RZ JEN DE DX RBTL TATQ OQTEE PBJQVTE. 
+ * WHEN YOU GO IN FOR A JOB INTERVIEW, I THINK A GOOD THING TO ASK IS IF THEY EVER PRESS CHARGES.
+ * 
+ * ZYFPQOUSB EZO SEP PHHPLS AH PJULUSUKW SZJPKSO GEULE UK DQAODPQACO LUQLCTOSZKLPO GACJY EZFP JZUK YAQTZKS.
+ * ADVERSITY HAS THE EFFECT OF ELICITING TALENTS WHICH IN PROSPEROUS CIRCUMSTANCES WOULD HAVE LAIN DORMANT.
+ * 
+ * FEET WKGEC VP EDU EM BWU NUPB HCBVAOUP EM TCUPP EDU AHD YUHC VD PEAVUBI.
+ * GOOD HUMOR IS ONE OF THE BEST ARTICLES OF DRESS ONE CAN WEAR IN SOCIETY.
+ * 
+ * KT KRAY GZWZCI VJ IJVHAVJRBA HRNZ KZ DGBWCZKI HRNZ KZ PBGO HRNZ KZ JEZ KBIJ VWIJGMIZ XGTDJBHGVK BG JEZ KBIJ RAJGRXVJZ VAVCTIRI VAY R VK RA KT BPA DGBDZG VJKBIDEZGZ.
+ * MY MIND REBELS AT STAGNATION GIVE ME PROBLEMS GIVE ME WORK GIVE ME THE MOST ABSTRUSE CRYPTOGRAM OR THE MOST INTRICATE ANALYSIS AND I AM IN MY OWN PROPER ATMOSPHERE
+ * 
+ * U YAK’S QPZJJB OPP SEP ECQYJPO. U OPKOP SEPT JUMP Z TPTAQB.
+ * I DON’T REALLY SEE THE HURDLES. I SENSE THEM LIKE A MEMORY.
+ * 
+ * ANLE GVG JXM NCOOVWLXM KLD EJ ENM JENMO NCOOVWLXM ? "V NLZM QD MDM JX DJC."
+ * WHAT DID ONE HURRICANE SAY TO THE OTHER HURRICANE ? "I HAVE MY EYE ON YOU."
+ * 
+ * ML MP CFSS LA OF IN OFVADF BEGODFEQ, VAD PIXT TEOMLP XAYLDMOILF LA TFESLT, CFESLT EYB CMPBAJ.
+ * IT IS WELL TO BE UP BEFORE DAYBREAK, FOR SUCH HABITS CONTRIBUTE TO HEALTH, WEALTH AND WISDOM.
+ * 
+ * AQDAGCABUA CT TKFAHVCBP DAKDZA BKGFWZZJ KYHWCB WLHAG CH CT HKK ZWHA HK YA KL WBJ YABALCH HK HVAF
+ * EXPERIENCE IS SOMETHING PEOPLE NORMALLY OBTAIN AFTER IT IS TOO LATE TO BE OF ANY BENEFIT TO THEM
+ * 
+ * IDYLY AX BOCBMX BU YBXM XZOKJAZU IZ YGYLM DKFBU JLZWOYF-UYBI, JOBKXAWOY,BUT CLZUE.
+ * THERE IS ALWAYS AN EASY SOLUTION TO EVERY HUMAN PROBLEM—NEAT, PLAUSIBLE, AND WRONG.
+ * 
+ * */
