@@ -1,4 +1,6 @@
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.io.*;
 
 public class DictionaryLookUp {
@@ -267,7 +269,7 @@ public class DictionaryLookUp {
 		}
 		sc.close();
 		long end = System.currentTimeMillis();
-		out.println("Time Taken for Preprocessing is: "+(end-start)+" ms");
+		System.out.println("Time Taken for Preprocessing is: "+(end-start)+" ms");
 		
 
 		System.out.println("Pre-processing is completed.");
@@ -277,7 +279,7 @@ public class DictionaryLookUp {
 		Scanner in = new Scanner(System.in);
 		String input = in.nextLine().toUpperCase();
 		String str[] = modifyPuzzle(input).split(" ");
-		
+		System.out.println(Arrays.toString(str));
 		candidateList = new ArrayList[str.length];
 		
 		for(int i=0;i<str.length;++i)
@@ -295,7 +297,7 @@ public class DictionaryLookUp {
 //				count++;
 //			out.println(cipherText[i]+" "+count+" "+hMap.get(convertToCanonicalForm(cipherText[i])).size());
 //		}
-//		end  = System.currentTimeMillis();
+//		end  = System.currentTimeMillis();	
 //		out.println("Time Taken for searching is: "+(end-start)+" ms");
 //		out.flush();
 
@@ -311,6 +313,7 @@ public class DictionaryLookUp {
 			String[] tmp = in.nextLine().split(" ");
 			map[tmp[0].charAt(0)-'A'].add(tmp[1].charAt(0));
 		}
+		start = System.currentTimeMillis();
 		for(int i=0;i<26;i++)
 		{
 			char c = 'a';
@@ -358,8 +361,85 @@ public class DictionaryLookUp {
 			}
 			out.print(" ");
 		}*/
-		in.close();
 		out.close();
+		end = System.currentTimeMillis();
+		System.out.println("Time Taken for Generating Possible Solutions: "+(end-start)+" ms");
+		
+		
+		start = System.currentTimeMillis();
+		//Executing grammar check on possible solutions
+		Process p;
+		String[] cmd = new String[] {"/usr/bin/python3.6","grammer-check.py"};
+		String s;
+		try {
+            p = Runtime.getRuntime().exec(cmd,null,new File("/home/blackpearl/Desktop/NLP/"));
+            BufferedReader br = new BufferedReader(
+                new InputStreamReader(p.getInputStream()));
+            while ((s = br.readLine()) != null)
+                System.out.println(s);
+            p.waitFor();
+            System.out.println ("exit: " + p.exitValue());
+            p.destroy();
+        } catch (Exception e) {
+        	e.printStackTrace();
+        }
+		end = System.currentTimeMillis();
+		System.out.println("Time taken to remove ungrammatical sentences: "+(end-start)+" ms");
+		
+		
+		
+		start = System.currentTimeMillis();
+		//Ranking grammatical correct solutions
+		cmd = new String[] {"bash","-c","java -mx150m -cp \"stanford-parser.jar\" edu.stanford.nlp.parser.lexparser.LexicalizedParser -outputFormat \"wordsAndTags\" -printPCFGkBest 1 englishPCFG.ser.gz /home/blackpearl/Desktop/NLP/finalSolution.txt > output.txt"};
+		try {
+			p = Runtime.getRuntime().exec(cmd,null,new File("/home/blackpearl/Desktop/NLP/stanford-parser-full-2018-10-17/"));
+			BufferedReader br = new BufferedReader(
+	                new InputStreamReader(p.getInputStream()));
+	            while ((s = br.readLine()) != null)
+	                System.out.println(s);
+	            p.waitFor();
+	            System.out.println ("exit: " + p.exitValue());
+	            p.destroy();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
+		
+		File oFile = new File("/home/blackpearl/Desktop/NLP/stanford-parser-full-2018-10-17/output.txt");
+		in = new Scanner(new FileReader(oFile));
+		int length = 0;
+		Pattern re = Pattern.compile("[^.!?\\s][^.!?]*(?:[.!?](?!['\"]?\\s|$)[^.!?]*)*[.!?]?['\"]?(?=\\s|$)", Pattern.MULTILINE | Pattern.COMMENTS);
+		Matcher reMatcher = re.matcher(input);
+		while (reMatcher.find()) {
+		    length++;
+		}
+		String[] finalAnswer = new String[length];
+		double[] finalScores = new double[length];
+		Arrays.fill(finalScores, Integer.MIN_VALUE);
+		while(in.hasNextLine())
+		{
+			for(int i=0;i<length;i++)
+			{
+				String text = in.nextLine();
+				in.nextLine();
+				double score = Double.parseDouble(in.nextLine().split(" ")[5]);
+				in.nextLine();
+				in.nextLine();
+				//System.out.println(text+" "+score);
+				if(finalScores[i]<score)
+				{
+					finalAnswer[i] = text;
+					finalScores[i] = score;
+				}
+			}
+		}
+		for(int i=0;i<length;i++)
+			System.out.print(finalAnswer[i]+" ");
+		in.close();
+		end = System.currentTimeMillis();
+		System.out.println("\nTime Taken to rank solutions: "+(end-start)+" ms");
 	}
 }
 
